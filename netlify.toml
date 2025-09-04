@@ -1,5 +1,23 @@
 # Netlify configuration for frontend-only deployment
 [build]
+  command = "cd client && npm ci && npm run build"
+  publish = "client/dist"
+
+[build.environment]
+  NODE_VERSION = "20"
+  # Supabase environment variables (set these in Netlify UI)
+  # VITE_SUPABASE_URL = "your-supabase-url"
+  # VITE_SUPABASE_ANON_KEY = "your-supabase-anon-key"
+
+# SPA fallback so client routes work on refresh/direct access
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
+
+# No backend proxy needed - everything runs in frontend!
+# Netlify configuration for frontend-only deployment
+[build]
   command = "cd client && npm install && npm run build"
   publish = "client/dist"
 
