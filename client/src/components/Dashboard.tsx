@@ -2,7 +2,6 @@ import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { campaignApi, visitApi } from '../services/api';
 import type { Campaign } from '../../../shared/types';
-import DebugSupabase from './DebugSupabase';
 
 export default function Dashboard() {
   const [campaigns, setCampaigns] = useState<Campaign[]>([]);
@@ -83,9 +82,6 @@ export default function Dashboard() {
 
   return (
     <div className="space-y-8">
-      {/* Debug Information */}
-      <DebugSupabase />
-
       {/* Header Section */}
       <div className="text-center space-y-4">
         <h2 className="text-4xl font-bold text-gray-900">Campaign Dashboard</h2>
