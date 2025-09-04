@@ -1,0 +1,31 @@
+# Root ignores
+node_modules/
+**/node_modules/
+
+# Builds
+client/dist/
+server/dist/
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+
+# Env files (do not commit secrets)
+.env
+*.env
+server/.env
+client/.env
+
+# OS/editor
+.DS_Store
+Thumbs.db
+.vscode/
+
+# Generated uploads and caches
+server/uploads/
+server/prisma/dev.db
+
+# Misc
+*.local

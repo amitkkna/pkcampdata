@@ -1,0 +1,15 @@
+# Netlify configuration
+[build]
+  command = "npm run build"
+  publish = "client/dist"
+
+# Proxy API calls to the server when using Netlify Dev, or if you host server elsewhere update this
+[[redirects]]
+  from = "/api/*"
+  to = "http://localhost:3001/api/:splat"
+  status = 200
+
+# Set environment variables in Netlify UI:
+#  - VITE_API_BASE_URL = /api (or full URL of your API if hosted separately)
+#  - VITE_SUPABASE_URL
+#  - VITE_SUPABASE_ANON_KEY
