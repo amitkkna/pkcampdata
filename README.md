@@ -64,13 +64,14 @@ pkpptreports/
 ## Deployment
 
 ### Netlify (Frontend)
-1) Create a new site from this repo in Netlify.
-2) Build command: `npm run build`  Publish directory: `client/dist`
-3) Environment variables (Site settings → Environment):
-   - `VITE_API_BASE_URL` = `/api` (when using Netlify dev proxy) or your API URL
-   - `VITE_SUPABASE_URL` = your Supabase project URL
-   - `VITE_SUPABASE_ANON_KEY` = your Supabase anon key
-4) If your API is hosted separately, point `VITE_API_BASE_URL` to that full URL.
+1) Create a new site from this repo in Netlify. Ensure Node 20 is used and set envs in the Netlify UI.
+
+Frontend is configured for Netlify. For public access (no localhost proxies):
+
+- Host the API publicly (Render/Fly.io/VPS). Ensure server binds to `0.0.0.0` and exposes `/api`.
+- In Netlify Site settings > Environment variables, set `VITE_API_BASE_URL` to your public API URL, e.g. `https://your-api.example.com/api`.
+- Do not use Netlify redirects to proxy to `http://localhost:3001` in production.
+- Auth is disabled; no Supabase config is required.
 
 ### Backend API
 Host the Node server where you prefer (Render/Fly/EC2). Required envs in `server/.env.example`:
@@ -83,3 +84,13 @@ npm start
 ```
 
 The application will be accessible on your company's internal network.
+
+## Authentication (Supabase)
+
+- To require login, set `REQUIRE_AUTH=true` in `server/.env` and redeploy the backend.
+- Frontend must have `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` set in Netlify.
+- Seed initial users (requires service role key):
+   - In `server` folder run: `npm run seed:auth`
+   - Users created:
+      - admin@globaldigitalconnect.com / admin123
+      - prateek@globaldigitalconnect.com / prateek123

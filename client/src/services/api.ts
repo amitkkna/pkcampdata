@@ -1,11 +1,22 @@
 import axios from 'axios';
 import type { Campaign, Visit, CreateCampaignRequest, CreateVisitRequest, ApiResponse } from '../../../shared/types';
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001/api';
+const resolvedBase = (() => {
+  const envBase = (import.meta as any).env?.VITE_API_BASE_URL as string | undefined;
+  if (envBase) return envBase;
+  // Local dev fallback
+  if (typeof window !== 'undefined' && (location.hostname === 'localhost' || location.hostname === '127.0.0.1')) {
+    return 'http://localhost:3001/api';
+  }
+  // Same-origin default (works if API is reverse-proxied under the same host)
+  if (typeof window !== 'undefined') return `${window.location.origin}/api`;
+  return '/api';
+})();
+const API_BASE_URL = resolvedBase;
 
-const api = axios.create({
-  baseURL: API_BASE_URL,
-});
+const api = axios.create({ baseURL: API_BASE_URL });
+
+// No auth headers required
 
 export const campaignApi = {
   // Get all campaigns
@@ -54,6 +65,14 @@ export const campaignApi = {
 };
 
 export const visitApi = {
+  // Get total visits count
+  getTotalCount: async (): Promise<number> => {
+    const response = await api.get<ApiResponse<{ total: number }>>('/visits/count');
+    if (!response.data.success) {
+      throw new Error(response.data.error || 'Failed to fetch visits count');
+    }
+    return response.data.data?.total ?? 0;
+  },
   // Get visits for a campaign
   getByCampaign: async (campaignId: string): Promise<Visit[]> => {
     const response = await api.get<ApiResponse<Visit[]>>(`/visits/campaign/${campaignId}`);

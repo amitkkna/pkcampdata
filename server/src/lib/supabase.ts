@@ -305,6 +305,18 @@ export class Database {
   }
 
   // Visit methods
+  async getTotalVisitCount(): Promise<number> {
+    try {
+      const { count, error } = await this.supabase
+        .from('visits')
+        .select('id', { count: 'exact', head: true });
+      if (error) throw error;
+      return count ?? 0;
+    } catch (error) {
+      console.error('Error counting visits:', error);
+      throw error;
+    }
+  }
   async getVisitsByCampaign(campaignId: string): Promise<Visit[]> {
     try {
       // Try camelCase column first; if it errors (column missing), retry with snake_case

@@ -47,6 +47,18 @@ router.get('/campaign/:campaignId', async (req, res) => {
   }
 });
 
+// Get total visit count
+router.get('/count', async (_req, res) => {
+  try {
+    const total = await db.getTotalVisitCount();
+    const response: ApiResponse<{ total: number }> = { success: true, data: { total } };
+    res.json(response);
+  } catch (error) {
+    const response: ApiResponse<never> = { success: false, error: 'Failed to get visits count' };
+    res.status(500).json(response);
+  }
+});
+
 // Create new visit with optional photo upload (up to 4 photos)
 router.post('/', upload.array('photos', 4), async (req, res) => {
   try {

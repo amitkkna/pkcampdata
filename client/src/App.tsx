@@ -1,9 +1,12 @@
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import Dashboard from './components/Dashboard';
 import CampaignDetail from './components/CampaignDetail';
 import CreateCampaign from './components/CreateCampaign';
+import { useEffect } from 'react';
 
 function App() {
+  useEffect(() => {}, []);
+
   return (
     <Router>
       <div className="min-h-screen bg-gradient-to-br from-indigo-100 via-purple-50 to-pink-100">
@@ -24,6 +27,7 @@ function App() {
                   <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
                   <span>System Online</span>
                 </div>
+                {/* Auth removed */}
               </div>
             </div>
           </div>
@@ -36,6 +40,7 @@ function App() {
               <Route path="/" element={<Dashboard />} />
               <Route path="/campaign/:id" element={<CampaignDetail />} />
               <Route path="/create-campaign" element={<CreateCampaign />} />
+              <Route path="*" element={<Navigate to="/" replace />} />
             </Routes>
           </div>
         </main>

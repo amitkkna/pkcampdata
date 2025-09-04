@@ -5,12 +5,14 @@ import path from 'path';
 import { campaignRoutes } from './routes/campaigns';
 import { visitRoutes } from './routes/visits';
 import { reportRoutes } from './routes/reports';
+// Auth middleware removed to run the API without authentication
 
 // Load environment variables
 dotenv.config({ path: path.join(__dirname, '../.env') });
 
 const app = express();
-const PORT = process.env.PORT || 3001;
+const HOST = process.env.HOST || '0.0.0.0';
+const PORT = Number(process.env.PORT) || 3001;
 
 // Middleware
 app.use(cors());
@@ -37,7 +39,8 @@ app.get('/api/health', (req, res) => {
   res.json({ status: 'OK', timestamp: new Date().toISOString() });
 });
 
-app.listen(PORT, () => {
-  console.log(`Server running on http://localhost:${PORT}`);
-  console.log(`API available at http://localhost:${PORT}/api`);
+app.listen(PORT, HOST, () => {
+  const hostShown = HOST === '0.0.0.0' ? 'localhost' : HOST;
+  console.log(`Server running on http://${hostShown}:${PORT}`);
+  console.log(`API available at http://${hostShown}:${PORT}/api`);
 });

@@ -1,11 +1,12 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { campaignApi } from '../services/api';
+import { campaignApi, visitApi } from '../services/api';
 import type { Campaign } from '../../../shared/types';
 
 export default function Dashboard() {
   const [campaigns, setCampaigns] = useState<Campaign[]>([]);
   const [loading, setLoading] = useState(true);
+  const [totalVisits, setTotalVisits] = useState<number>(0);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -15,8 +16,12 @@ export default function Dashboard() {
   const loadCampaigns = async () => {
     try {
       setLoading(true);
-      const data = await campaignApi.getAll();
+      const [data, visitsCount] = await Promise.all([
+        campaignApi.getAll(),
+        visitApi.getTotalCount(),
+      ]);
       setCampaigns(data);
+      setTotalVisits(visitsCount);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load campaigns');
     } finally {
@@ -101,7 +106,7 @@ export default function Dashboard() {
           <div className="flex items-center justify-between">
             <div>
               <p className="text-green-100 text-sm font-medium">Total Visits</p>
-              <p className="text-3xl font-bold">{campaigns.reduce((acc, c) => acc + (c.visits?.length || 0), 0)}</p>
+              <p className="text-3xl font-bold">{totalVisits}</p>
             </div>
             <div className="p-3 bg-white/20 rounded-xl">
               <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">

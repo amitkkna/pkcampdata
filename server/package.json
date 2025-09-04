@@ -12,7 +12,8 @@
   "seed": "ts-node scripts/seed.ts",
   "seed:demo": "ts-node scripts/create-demo-report-data.ts",
   "reports": "ts-node scripts/generate-reports.ts",
-  "pptx:offline": "ts-node scripts/offline-generate-ppt.ts"
+  "pptx:offline": "ts-node scripts/offline-generate-ppt.ts",
+  "seed:auth": "ts-node scripts/seed-auth-users.ts"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.57.0",
