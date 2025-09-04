@@ -14,7 +14,3 @@ export const getPublicUrl = (bucket: string, path: string) => {
   const { data } = supabase.storage.from(bucket).getPublicUrl(path);
   return data.publicUrl;
 };
-
-export function getAccessToken() { 
-  return null; // No auth needed
-}

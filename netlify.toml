@@ -1,26 +1,18 @@
-# Netlify configuration
+# Netlify configuration for frontend-only deployment
 [build]
   command = "cd client && npm install && npm run build"
   publish = "client/dist"
 
 [build.environment]
   NODE_VERSION = "20"
+  # Supabase environment variables (set these in Netlify UI)
+  # VITE_SUPABASE_URL = "your-supabase-url"
+  # VITE_SUPABASE_ANON_KEY = "your-supabase-anon-key"
 
-# Note: Do not proxy to localhost in production. Serve the API from a public URL
-# and set VITE_API_BASE_URL accordingly in Netlify Site settings.
-#
-# If you want to use Netlify Dev locally with a local API, you can temporarily
-# uncomment the block below.
-# [[redirects]]
-#   from = "/api/*"
-#   to = "http://localhost:3001/api/:splat"
-#   status = 200
-
-# SPA fallback so client routes like /login work on refresh/direct access
+# SPA fallback so client routes work on refresh/direct access
 [[redirects]]
   from = "/*"
   to = "/index.html"
   status = 200
 
-# Set environment variables in Netlify UI:
-#  - VITE_API_BASE_URL = https://YOUR-PUBLIC-API-HOST/api
+# No backend proxy needed - everything runs in frontend!
