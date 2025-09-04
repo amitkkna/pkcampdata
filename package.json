@@ -10,7 +10,8 @@
     "build:client": "cd client && npm run build",
     "build:server": "cd server && npm run build",
     "start": "cd server && npm start",
-    "install:all": "npm install && cd client && npm install && cd ../server && npm install"
+    "install:all": "npm install && cd client && npm install && cd server && npm install",
+    "postinstall": "cd server && npm install"
   },
   "keywords": ["campaign", "reporting", "pdf", "powerpoint", "agency"],
   "author": "Your Agency",

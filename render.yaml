@@ -1,0 +1,24 @@
+services:
+  - type: web
+    name: pkpptreports-api
+    env: node
+    plan: free
+    buildCommand: cd server && npm install && npm run build
+    startCommand: cd server && npm start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: HOST
+        value: 0.0.0.0
+      - key: PORT
+        value: 10000
+      - key: SUPABASE_URL
+        fromDatabase:
+          name: supabase-url
+          property: connectionString
+      - key: SUPABASE_SERVICE_ROLE_KEY
+        fromDatabase:
+          name: supabase-service-key
+          property: connectionString
+      - key: SUPABASE_BUCKET
+        value: campaign-photos
