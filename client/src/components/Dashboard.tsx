@@ -16,12 +16,16 @@ export default function Dashboard() {
   const loadCampaigns = async () => {
     try {
       setLoading(true);
-      const [data, visitsCount] = await Promise.all([
-        campaignApi.getAll(),
-        visitApi.getTotalCount(),
-      ]);
+      const data = await campaignApi.getAll();
       setCampaigns(data);
-      setTotalVisits(visitsCount);
+      // Fetch total visits, but don't fail the whole dashboard if it errors
+      try {
+        const visitsCount = await visitApi.getTotalCount();
+        setTotalVisits(visitsCount);
+      } catch (_e) {
+        setTotalVisits(0);
+        // keep the dashboard visible even if count fails
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load campaigns');
     } finally {
