@@ -1,6 +1,13 @@
 import { supabase } from './supabaseClient';
 import type { Campaign, Visit, CreateCampaignRequest, CreateVisitRequest } from '../../../shared/types';
 
+// Check if Supabase is properly configured
+const isConfigured = () => {
+  const url = import.meta.env.VITE_SUPABASE_URL;
+  const key = import.meta.env.VITE_SUPABASE_ANON_KEY;
+  return url && key && !url.includes('your-project') && !key.includes('your-anon-key');
+};
+
 // Helpers to map DB row (snake_case or camelCase) to our camelCase types
 const mapVisit = (v: any): Visit => ({
   id: v.id,
@@ -40,6 +47,10 @@ const mapCampaign = (c: any): Campaign => ({
 export const campaignApi = {
   // Get all campaigns with visits
   getAll: async (): Promise<Campaign[]> => {
+    if (!isConfigured()) {
+      throw new Error('Supabase not configured. Please set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY in your .env.local file.');
+    }
+
     let { data, error } = await supabase
       .from('campaigns')
       .select('*, visits(*)')
@@ -66,6 +77,10 @@ export const campaignApi = {
 
   // Get campaign by ID with visits
   getById: async (id: string): Promise<Campaign> => {
+    if (!isConfigured()) {
+      throw new Error('Supabase not configured. Please set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY in your .env.local file.');
+    }
+
     let { data, error } = await supabase
       .from('campaigns')
       .select('*, visits(*)')
@@ -205,15 +220,29 @@ export const visitApi = {
     // Upload photos to Supabase Storage if provided
     if (photos && photos.length > 0) {
       const uploadPromises = photos.map(async (photo, index) => {
-        const fileName = `visit-${Date.now()}-${index}-${photo.name}`;
-        const { error } = await supabase.storage
+        // Sanitize filename: remove spaces, special chars, keep only alphanumeric and basic chars
+        const sanitizedName = photo.name
+          .replace(/[^a-zA-Z0-9.-]/g, '-')
+          .replace(/-+/g, '-')
+          .replace(/^-|-$/g, '');
+        
+        const fileName = `visit-${Date.now()}-${index}-${sanitizedName}`;
+        
+        console.log(`Uploading photo ${index + 1}:`, fileName, 'Size:', photo.size, 'Type:', photo.type);
+        
+        const { data, error } = await supabase.storage
           .from('campaign-photos')
-          .upload(fileName, photo);
+          .upload(fileName, photo, {
+            cacheControl: '3600',
+            upsert: false
+          });
         
         if (error) {
-          console.error('Error uploading photo:', error);
-          throw new Error(`Failed to upload photo: ${photo.name}`);
+          console.error('Supabase storage error:', error);
+          throw new Error(`Failed to upload photo: ${photo.name} - ${error.message}`);
         }
+        
+        console.log('Upload successful:', data);
         
         const { data: urlData } = supabase.storage
           .from('campaign-photos')
@@ -222,7 +251,13 @@ export const visitApi = {
         return urlData.publicUrl;
       });
       
-      photoUrls = await Promise.all(uploadPromises);
+      try {
+        photoUrls = await Promise.all(uploadPromises);
+        console.log('All photos uploaded successfully:', photoUrls);
+      } catch (uploadError) {
+        console.error('Photo upload failed:', uploadError);
+        throw uploadError;
+      }
     }
     
     // Create visit record
@@ -256,15 +291,29 @@ export const visitApi = {
     // Upload new photos if provided
     if (photos && photos.length > 0) {
       const uploadPromises = photos.map(async (photo, index) => {
-        const fileName = `visit-${Date.now()}-${index}-${photo.name}`;
-        const { error } = await supabase.storage
+        // Sanitize filename: remove spaces, special chars, keep only alphanumeric and basic chars
+        const sanitizedName = photo.name
+          .replace(/[^a-zA-Z0-9.-]/g, '-')
+          .replace(/-+/g, '-')
+          .replace(/^-|-$/g, '');
+        
+        const fileName = `visit-${Date.now()}-${index}-${sanitizedName}`;
+        
+        console.log(`Uploading photo ${index + 1}:`, fileName, 'Size:', photo.size, 'Type:', photo.type);
+        
+        const { data, error } = await supabase.storage
           .from('campaign-photos')
-          .upload(fileName, photo);
+          .upload(fileName, photo, {
+            cacheControl: '3600',
+            upsert: false
+          });
         
         if (error) {
-          console.error('Error uploading photo:', error);
-          throw new Error(`Failed to upload photo: ${photo.name}`);
+          console.error('Supabase storage error:', error);
+          throw new Error(`Failed to upload photo: ${photo.name} - ${error.message}`);
         }
+        
+        console.log('Upload successful:', data);
         
         const { data: urlData } = supabase.storage
           .from('campaign-photos')
@@ -273,7 +322,13 @@ export const visitApi = {
         return urlData.publicUrl;
       });
       
-      photoUrls = await Promise.all(uploadPromises);
+      try {
+        photoUrls = await Promise.all(uploadPromises);
+        console.log('All photos uploaded successfully:', photoUrls);
+      } catch (uploadError) {
+        console.error('Photo upload failed:', uploadError);
+        throw uploadError;
+      }
     }
     
     const updateData: any = {};

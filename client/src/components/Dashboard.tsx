@@ -1,8 +1,14 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { campaignApi, visitApi } from '../services/api';
-import { isSupabaseConfigured } from '../services/supabaseClient';
 import type { Campaign } from '../../../shared/types';
+
+// Check if we're using mock data
+const isUsingMockData = () => {
+  const url = import.meta.env.VITE_SUPABASE_URL;
+  const key = import.meta.env.VITE_SUPABASE_ANON_KEY;
+  return !url || !key || url.includes('your-project') || key.includes('your-anon-key');
+};
 
 export default function Dashboard() {
   const [campaigns, setCampaigns] = useState<Campaign[]>([]);
@@ -11,12 +17,7 @@ export default function Dashboard() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (isSupabaseConfigured) {
-      loadCampaigns();
-    } else {
-      setLoading(false);
-      setError('Data service not configured. Please set Supabase env variables.');
-    }
+    loadCampaigns();
   }, []);
 
   const loadCampaigns = async () => {
@@ -88,6 +89,21 @@ export default function Dashboard() {
 
   return (
     <div className="space-y-8">
+      {/* Development mode banner */}
+      {isUsingMockData() && (
+        <div className="bg-orange-50 border border-orange-300 text-orange-800 rounded-lg p-4">
+          <div className="flex items-center space-x-2">
+            <span className="text-lg">🔧</span>
+            <div>
+              <div className="font-semibold">Development Mode</div>
+              <div className="text-sm">
+                Using mock data. Set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY in client/.env.local to connect to your database.
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+      
       {/* Header Section */}
       <div className="text-center space-y-4">
         <h2 className="text-4xl font-bold text-gray-900">Campaign Dashboard</h2>

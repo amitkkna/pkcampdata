@@ -2,11 +2,23 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-d
 import Dashboard from './components/Dashboard';
 import CampaignDetail from './components/CampaignDetail';
 import CreateCampaign from './components/CreateCampaign';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import ErrorBoundary from './components/ErrorBoundary';
-import { isSupabaseConfigured } from './services/supabaseClient';
 
 function App() {
+  const [supabaseConfigured, setSupabaseConfigured] = useState<boolean | null>(null);
+
+  useEffect(() => {
+    // Check Supabase config dynamically to avoid import failures
+    try {
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+      const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+      setSupabaseConfigured(Boolean(supabaseUrl && supabaseKey));
+    } catch (error) {
+      console.error('Error checking Supabase config:', error);
+      setSupabaseConfigured(false);
+    }
+  }, []);
   useEffect(() => {}, []);
 
   return (
@@ -36,7 +48,7 @@ function App() {
         </header>
 
         {/* Config banner when Supabase is not set */}
-        {!isSupabaseConfigured && (
+        {supabaseConfigured === false && (
           <div className="container pt-6">
             <div className="bg-yellow-50 border border-yellow-300 text-yellow-800 rounded-lg p-4">
               Supabase is not configured. Set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY in your environment to enable data.

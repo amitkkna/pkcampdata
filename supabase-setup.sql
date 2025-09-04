@@ -89,5 +89,49 @@ CREATE POLICY "Enable delete for all users (visits)" ON visits
 -- Create storage bucket for photos (run this separately if needed)
 -- INSERT INTO storage.buckets (id, name, public) VALUES ('campaign-photos', 'campaign-photos', true);
 
+-- Storage bucket and RLS policies for photo uploads
+-- 1. Create the storage bucket for campaign photos (if not exists)
+INSERT INTO storage.buckets (id, name, public)
+VALUES ('campaign-photos', 'campaign-photos', true)
+ON CONFLICT (id) DO UPDATE SET
+  public = true;
+
+-- 2. Create RLS policies for the storage bucket to allow public uploads and reads
+
+-- Drop existing storage policies if they exist
+DROP POLICY IF EXISTS "Allow public uploads to campaign-photos" ON storage.objects;
+DROP POLICY IF EXISTS "Allow public reads from campaign-photos" ON storage.objects;
+DROP POLICY IF EXISTS "Allow public updates to campaign-photos" ON storage.objects;
+DROP POLICY IF EXISTS "Allow public deletes from campaign-photos" ON storage.objects;
+
+-- Allow public uploads to campaign-photos bucket
+CREATE POLICY "Allow public uploads to campaign-photos" ON storage.objects
+FOR INSERT WITH CHECK (
+  bucket_id = 'campaign-photos'
+);
+
+-- Allow public reads from campaign-photos bucket  
+CREATE POLICY "Allow public reads from campaign-photos" ON storage.objects
+FOR SELECT USING (
+  bucket_id = 'campaign-photos'
+);
+
+-- Allow public updates to campaign-photos bucket (for overwrites)
+CREATE POLICY "Allow public updates to campaign-photos" ON storage.objects
+FOR UPDATE USING (
+  bucket_id = 'campaign-photos'
+) WITH CHECK (
+  bucket_id = 'campaign-photos'
+);
+
+-- Allow public deletes from campaign-photos bucket
+CREATE POLICY "Allow public deletes from campaign-photos" ON storage.objects
+FOR DELETE USING (
+  bucket_id = 'campaign-photos'
+);
+
+-- 3. Ensure RLS is enabled on storage.objects (should be by default)
+ALTER TABLE storage.objects ENABLE ROW LEVEL SECURITY;
+
 COMMENT ON TABLE campaigns IS 'Campaign Reporting Generator - Campaign data';
 COMMENT ON TABLE visits IS 'Campaign Reporting Generator - Visit tracking data';
