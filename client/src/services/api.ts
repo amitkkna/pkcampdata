@@ -16,6 +16,28 @@ const API_BASE_URL = resolvedBase;
 
 const api = axios.create({ baseURL: API_BASE_URL });
 
+// Helpful runtime log to confirm which API base the app is using
+try {
+  // eslint-disable-next-line no-console
+  console.info(`[api] Using base URL: ${API_BASE_URL}`);
+} catch {}
+
+// If Netlify serves HTML (SPA) for /api due to missing proxy or env, surface a clear error
+api.interceptors.response.use(
+  (response) => {
+    const contentType = (response.headers && (response.headers['content-type'] || response.headers['Content-Type'])) || '';
+    if (typeof response.data === 'string' && contentType.includes('text/html')) {
+      return Promise.reject(
+        new Error(
+          `Received HTML from API (${API_BASE_URL}). In Netlify, set VITE_API_BASE_URL to your public API base URL ending with /api, then redeploy.`
+        )
+      );
+    }
+    return response;
+  },
+  (error) => Promise.reject(error)
+);
+
 // No auth headers required
 
 export const campaignApi = {
