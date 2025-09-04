@@ -3,6 +3,8 @@ import Dashboard from './components/Dashboard';
 import CampaignDetail from './components/CampaignDetail';
 import CreateCampaign from './components/CreateCampaign';
 import { useEffect } from 'react';
+import ErrorBoundary from './components/ErrorBoundary';
+import { isSupabaseConfigured } from './services/supabaseClient';
 
 function App() {
   useEffect(() => {}, []);
@@ -33,15 +35,26 @@ function App() {
           </div>
         </header>
 
+        {/* Config banner when Supabase is not set */}
+        {!isSupabaseConfigured && (
+          <div className="container pt-6">
+            <div className="bg-yellow-50 border border-yellow-300 text-yellow-800 rounded-lg p-4">
+              Supabase is not configured. Set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY in your environment to enable data.
+            </div>
+          </div>
+        )}
+
         {/* Main content with improved spacing */}
         <main className="container py-8">
           <div className="max-w-6xl mx-auto">
-            <Routes>
-              <Route path="/" element={<Dashboard />} />
-              <Route path="/campaign/:id" element={<CampaignDetail />} />
-              <Route path="/create-campaign" element={<CreateCampaign />} />
-              <Route path="*" element={<Navigate to="/" replace />} />
-            </Routes>
+            <ErrorBoundary>
+              <Routes>
+                <Route path="/" element={<Dashboard />} />
+                <Route path="/campaign/:id" element={<CampaignDetail />} />
+                <Route path="/create-campaign" element={<CreateCampaign />} />
+                <Route path="*" element={<Navigate to="/" replace />} />
+              </Routes>
+            </ErrorBoundary>
           </div>
         </main>
 

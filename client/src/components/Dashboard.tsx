@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { campaignApi, visitApi } from '../services/api';
+import { isSupabaseConfigured } from '../services/supabaseClient';
 import type { Campaign } from '../../../shared/types';
 
 export default function Dashboard() {
@@ -10,7 +11,12 @@ export default function Dashboard() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    loadCampaigns();
+    if (isSupabaseConfigured) {
+      loadCampaigns();
+    } else {
+      setLoading(false);
+      setError('Data service not configured. Please set Supabase env variables.');
+    }
   }, []);
 
   const loadCampaigns = async () => {
