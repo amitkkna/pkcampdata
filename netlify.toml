@@ -1,7 +1,10 @@
 # Netlify configuration
 [build]
-  command = "npm run build"
+  command = "npm run install:all && npm run build"
   publish = "client/dist"
+
+[build.environment]
+  NODE_VERSION = "20"
 
 # Proxy API calls to the server when using Netlify Dev, or if you host server elsewhere update this
 [[redirects]]
