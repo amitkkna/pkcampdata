@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "description": "Internal Campaign Reporting Generator for Advertisement Agency",
   "scripts": {
-    "dev": "concurrently \"npm run dev:client\" \"npm run dev:server\"",
+  "dev": "npm run dev:client",
     "dev:client": "cd client && npm run dev",
     "dev:server": "cd server && npm run dev",
     "build": "npm run build:client && npm run build:server",

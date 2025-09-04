@@ -21,6 +21,7 @@ export default function ReportGenerator({ campaign, visits }: ReportGeneratorPro
   const [selectedDate, setSelectedDate] = useState(toLocalYMD(new Date()));
   const [startDate, setStartDate] = useState(toLocalYMD(new Date()));
   const [endDate, setEndDate] = useState(toLocalYMD(new Date()));
+  const [pdfAspect, setPdfAspect] = useState<'16:9' | '4:3' | 'A4'>('16:9');
   const [generatingPdf, setGeneratingPdf] = useState(false);
   const [generatingPpt, setGeneratingPpt] = useState(false);
   const [showPreview, setShowPreview] = useState(false);
@@ -41,7 +42,8 @@ export default function ReportGenerator({ campaign, visits }: ReportGeneratorPro
       reportType: pdfReportType,
       selectedDate: pdfReportType === 'single' ? selectedDate : undefined,
       startDate: pdfReportType === 'range' ? startDate : undefined,
-      endDate: pdfReportType === 'range' ? endDate : undefined,
+  endDate: pdfReportType === 'range' ? endDate : undefined,
+  aspectRatio: pdfAspect,
     };
   };
 
@@ -57,11 +59,11 @@ export default function ReportGenerator({ campaign, visits }: ReportGeneratorPro
       
       let filename = 'report.pdf';
       if (pdfReportType === 'single') {
-        filename = `daily-report-${campaign.name}-${selectedDate}.pdf`;
+        filename = `daily-report-${campaign.name}-${selectedDate}-${pdfAspect.replace(':','x')}.pdf`;
       } else if (pdfReportType === 'range') {
-        filename = `range-report-${campaign.name}-${startDate}-to-${endDate}.pdf`;
+        filename = `range-report-${campaign.name}-${startDate}-to-${endDate}-${pdfAspect.replace(':','x')}.pdf`;
       } else {
-        filename = `complete-report-${campaign.name}.pdf`;
+        filename = `complete-report-${campaign.name}-${pdfAspect.replace(':','x')}.pdf`;
       }
       
       a.download = filename;
@@ -70,8 +72,9 @@ export default function ReportGenerator({ campaign, visits }: ReportGeneratorPro
       window.URL.revokeObjectURL(url);
       document.body.removeChild(a);
     } catch (error) {
-      console.error('Failed to generate PDF:', error);
-      alert('Failed to generate PDF report. Please try again.');
+  console.error('Failed to generate PDF:', error);
+  const msg = error instanceof Error ? error.message : String(error);
+  alert(`Failed to generate PDF report: ${msg}`);
     } finally {
       setGeneratingPdf(false);
     }
@@ -145,6 +148,25 @@ export default function ReportGenerator({ campaign, visits }: ReportGeneratorPro
             <p className="text-sm text-gray-600">
               Generate a professional PDF report for visits on specific date(s).
             </p>
+            {/* Aspect Ratio */}
+            <div className="space-y-2">
+              <label className="block text-sm font-medium text-gray-700">Aspect Ratio</label>
+              <div className="flex flex-wrap gap-4 text-sm">
+                <label className="inline-flex items-center gap-2">
+                  <input type="radio" name="pdfAspect" value="16:9" checked={pdfAspect==='16:9'} onChange={() => setPdfAspect('16:9')} />
+                  16:9 (Widescreen)
+                </label>
+                <label className="inline-flex items-center gap-2">
+                  <input type="radio" name="pdfAspect" value="4:3" checked={pdfAspect==='4:3'} onChange={() => setPdfAspect('4:3')} />
+                  4:3 (Classic)
+                </label>
+                <label className="inline-flex items-center gap-2">
+                  <input type="radio" name="pdfAspect" value="A4" checked={pdfAspect==='A4'} onChange={() => setPdfAspect('A4')} />
+                  A4 (Landscape)
+                </label>
+              </div>
+              <p className="text-xs text-gray-500">PDF will be generated in {pdfAspect} layout.</p>
+            </div>
             
             {/* PDF Report Type Selection */}
             <div className="space-y-3">

@@ -8,6 +8,7 @@ export default defineConfig({
   server: {
     host: true,
   port: 5173,
-  strictPort: true,
+  // If 5173 is busy, pick the next available port automatically
+  strictPort: false,
   },
 })
