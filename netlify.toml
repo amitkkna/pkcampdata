@@ -1,6 +1,6 @@
 # Netlify configuration
 [build]
-  command = "npm run install:all && npm run build"
+  command = "cd client && npm install && npm run build"
   publish = "client/dist"
 
 [build.environment]
