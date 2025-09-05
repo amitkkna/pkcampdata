@@ -94,9 +94,9 @@ export const reportApi = {
   aspectRatio?: '16:9' | '4:3' | 'A4';
     }
   ): Promise<Blob> => {
-    // Import here to avoid loading on initial bundle
-    const { campaignApi } = await import('./supabaseApi');
-    
+    // Import lazily and use API selector (mock or supabase) so reports work without Supabase
+    const { campaignApi } = await import('./api');
+
     const campaign = await campaignApi.getById(campaignId);
     const filteredVisits = filterVisitsByDate(campaign.visits || [], options);
 
@@ -307,9 +307,9 @@ export const reportApi = {
       endDate?: string;
     }
   ): Promise<Blob> => {
-    // Import here to avoid loading on initial bundle
-    const { campaignApi } = await import('./supabaseApi');
-    
+    // Import lazily and use API selector (mock or supabase) so reports work without Supabase
+    const { campaignApi } = await import('./api');
+
     const campaign = await campaignApi.getById(campaignId);
     const filteredVisits = filterVisitsByDate(campaign.visits || [], options);
     

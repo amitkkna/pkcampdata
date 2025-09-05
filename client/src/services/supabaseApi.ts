@@ -43,6 +43,18 @@ const mapCampaign = (c: any): Campaign => ({
   visits: (c.visits || []).map((v: any) => mapVisit(v)),
 });
 
+// UUID generator fallback if DB default is missing
+const genUUID = (): string => {
+  const g = (globalThis as any);
+  if (g.crypto && typeof g.crypto.randomUUID === 'function') return g.crypto.randomUUID();
+  // Minimal RFC4122 v4 generator
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (ch) => {
+    const r = (Math.random() * 16) | 0;
+    const v = ch === 'x' ? r : (r & 0x3) | 0x8;
+    return v.toString(16);
+  });
+};
+
 // Direct Supabase operations - no backend needed!
 export const campaignApi = {
   // Get all campaigns with visits
@@ -113,47 +125,128 @@ export const campaignApi = {
 
   // Create new campaign
   create: async (campaignData: CreateCampaignRequest): Promise<Campaign> => {
-    const { data, error } = await supabase
+    // Attempt snake_case first; if schema uses camelCase, retry
+    const snakePayload: any = {
+      name: campaignData.name,
+      client_name: campaignData.clientName,
+      start_date: campaignData.startDate,
+      end_date: campaignData.endDate,
+      description: campaignData.description ?? null
+    };
+
+    const camelPayload: any = {
+      name: campaignData.name,
+      clientName: campaignData.clientName,
+      startDate: campaignData.startDate,
+      endDate: campaignData.endDate,
+      description: campaignData.description ?? null
+    };
+
+  let insertRes = await supabase
       .from('campaigns')
-      .insert([{
-        name: campaignData.name,
-        client_name: campaignData.clientName,
-        start_date: campaignData.startDate,
-        end_date: campaignData.endDate,
-        description: campaignData.description
-      }])
+      .insert([snakePayload])
       .select('*')
       .single();
-    
-    if (error) {
-      console.error('Error creating campaign:', error);
-      throw new Error(`Failed to create campaign: ${error.message || 'Unknown error'}`);
+
+    // If missing column error, retry with camelCase keys
+    if (
+      insertRes.error && (
+        /42703/.test(insertRes.error.code || '') ||
+        /column .* does not exist/i.test(insertRes.error.message || '') ||
+        /could not find .*column/i.test((insertRes.error.message || '').toLowerCase()) ||
+        /schema cache/i.test((insertRes.error.message || '').toLowerCase())
+      )
+    ) {
+      insertRes = await supabase
+        .from('campaigns')
+        .insert([camelPayload])
+        .select('*')
+        .single();
     }
-    
-  return mapCampaign({ ...data, visits: [] });
+
+    // If id default is missing (NOT NULL violation), retry providing a client-side UUID
+    if (
+      insertRes.error && (
+        insertRes.error.code === '23502' || /null value in column\s+"id"/i.test(insertRes.error.message || '')
+      )
+    ) {
+      const idVal = genUUID();
+      // Try snake with id
+      let withId = await supabase
+        .from('campaigns')
+        .insert([{ id: idVal, ...snakePayload }])
+        .select('*')
+        .single();
+      // If schema mismatch, retry camel with id
+      if (
+        withId.error && (
+          /42703/.test(withId.error.code || '') || /column .* does not exist/i.test(withId.error.message || '')
+        )
+      ) {
+        withId = await supabase
+          .from('campaigns')
+          .insert([{ id: idVal, ...camelPayload }])
+          .select('*')
+          .single();
+      }
+      insertRes = withId;
+    }
+
+    if (insertRes.error) {
+      console.error('Error creating campaign:', insertRes.error);
+      throw new Error(`Failed to create campaign: ${insertRes.error.message || 'Unknown error'}`);
+    }
+
+    return mapCampaign({ ...insertRes.data, visits: [] });
   },
 
   // Update campaign
   update: async (id: string, updates: CreateCampaignRequest): Promise<Campaign> => {
-    const { data, error } = await supabase
+    const snakePayload: any = {
+      name: updates.name,
+      client_name: updates.clientName,
+      start_date: updates.startDate,
+      end_date: updates.endDate,
+      description: updates.description ?? null
+    };
+
+    const camelPayload: any = {
+      name: updates.name,
+      clientName: updates.clientName,
+      startDate: updates.startDate,
+      endDate: updates.endDate,
+      description: updates.description ?? null
+    };
+
+    let updateRes = await supabase
       .from('campaigns')
-      .update({
-        name: updates.name,
-        client_name: updates.clientName,
-        start_date: updates.startDate,
-        end_date: updates.endDate,
-        description: updates.description
-      })
+      .update(snakePayload)
       .eq('id', id)
       .select('*')
       .single();
-    
-    if (error) {
-      console.error('Error updating campaign:', error);
-      throw new Error(`Failed to update campaign: ${error.message || 'Unknown error'}`);
+
+    if (
+      updateRes.error && (
+        /42703/.test(updateRes.error.code || '') ||
+        /column .* does not exist/i.test(updateRes.error.message || '') ||
+        /could not find .*column/i.test((updateRes.error.message || '').toLowerCase()) ||
+        /schema cache/i.test((updateRes.error.message || '').toLowerCase())
+      )
+    ) {
+      updateRes = await supabase
+        .from('campaigns')
+        .update(camelPayload)
+        .eq('id', id)
+        .select('*')
+        .single();
     }
-    
-  return mapCampaign({ ...data, visits: [] });
+
+    if (updateRes.error) {
+      console.error('Error updating campaign:', updateRes.error);
+      throw new Error(`Failed to update campaign: ${updateRes.error.message || 'Unknown error'}`);
+    }
+
+    return mapCampaign({ ...updateRes.data, visits: [] });
   },
 
   // Delete campaign
@@ -195,7 +288,14 @@ export const visitApi = {
       .order('date', { ascending: false });
 
     // If the column doesn't exist, retry with camelCase
-    if (error && (error.code === '42703' || /campaign_id does not exist/i.test(error.message))) {
+    if (
+      error && (
+        error.code === '42703' ||
+        /campaign_id does not exist/i.test(error.message || '') ||
+        /could not find .*column/i.test((error.message || '').toLowerCase()) ||
+        /schema cache/i.test((error.message || '').toLowerCase())
+      )
+    ) {
       const retry = await supabase
         .from('visits')
         .select('*')
@@ -226,7 +326,7 @@ export const visitApi = {
           .replace(/-+/g, '-')
           .replace(/^-|-$/g, '');
         
-        const fileName = `visit-${Date.now()}-${index}-${sanitizedName}`;
+  const fileName = `visits/visit-${Date.now()}-${index}-${sanitizedName}`;
         
         console.log(`Uploading photo ${index + 1}:`, fileName, 'Size:', photo.size, 'Type:', photo.type);
         
@@ -234,11 +334,15 @@ export const visitApi = {
           .from('campaign-photos')
           .upload(fileName, photo, {
             cacheControl: '3600',
-            upsert: false
+            upsert: true
           });
         
         if (error) {
           console.error('Supabase storage error:', error);
+          const msg = (error as any)?.message || '';
+          if (/row-level security|RLS/i.test(msg)) {
+            throw new Error(`Failed to upload photo: ${photo.name} - RLS policy blocked upload. Ensure storage policy allows INSERT on bucket 'campaign-photos'.`);
+          }
           throw new Error(`Failed to upload photo: ${photo.name} - ${error.message}`);
         }
         
@@ -260,28 +364,83 @@ export const visitApi = {
       }
     }
     
-    // Create visit record
-    const { data, error } = await supabase
+    // Create visit record (snake_case first, retry camelCase on schema mismatch)
+    const snakePayload: any = {
+      date: visitData.date,
+      location: visitData.location,
+      campaign_id: visitData.campaignId,
+      notes: visitData.notes || null,
+      photo_url_1: photoUrls[0] || null,
+      photo_url_2: photoUrls[1] || null,
+      photo_url_3: photoUrls[2] || null,
+      photo_url_4: photoUrls[3] || null,
+    };
+    const camelPayload: any = {
+      date: visitData.date,
+      location: visitData.location,
+      campaignId: visitData.campaignId,
+      notes: visitData.notes || null,
+      photoUrl1: photoUrls[0] || null,
+      photoUrl2: photoUrls[1] || null,
+      photoUrl3: photoUrls[2] || null,
+      photoUrl4: photoUrls[3] || null,
+    };
+
+  let insertRes = await supabase
       .from('visits')
-      .insert([{
-        date: visitData.date,
-        location: visitData.location,
-        campaign_id: visitData.campaignId,
-        notes: visitData.notes || null,
-        photo_url_1: photoUrls[0] || null,
-        photo_url_2: photoUrls[1] || null,
-        photo_url_3: photoUrls[2] || null,
-        photo_url_4: photoUrls[3] || null,
-      }])
+      .insert([snakePayload])
       .select('*')
       .single();
-    
-    if (error) {
-      console.error('Error creating visit:', error);
-      throw new Error(`Failed to create visit: ${error.message || 'Unknown error'}`);
+
+    if (
+      insertRes.error && (
+        /42703/.test(insertRes.error.code || '') ||
+        /column .* does not exist/i.test(insertRes.error.message || '') ||
+        /could not find .*column/i.test((insertRes.error.message || '').toLowerCase()) ||
+        /schema cache/i.test((insertRes.error.message || '').toLowerCase())
+      )
+    ) {
+      insertRes = await supabase
+        .from('visits')
+        .insert([camelPayload])
+        .select('*')
+        .single();
+    }
+
+    // If id default is missing (NOT NULL violation), retry providing a client-side UUID
+    if (
+      insertRes.error && (
+        insertRes.error.code === '23502' || /null value in column\s+"id"/i.test(insertRes.error.message || '')
+      )
+    ) {
+      const idVal = genUUID();
+      // Try snake with id
+      let withId = await supabase
+        .from('visits')
+        .insert([{ id: idVal, ...snakePayload }])
+        .select('*')
+        .single();
+      // If schema mismatch, retry camel with id
+      if (
+        withId.error && (
+          /42703/.test(withId.error.code || '') || /column .* does not exist/i.test(withId.error.message || '')
+        )
+      ) {
+        withId = await supabase
+          .from('visits')
+          .insert([{ id: idVal, ...camelPayload }])
+          .select('*')
+          .single();
+      }
+      insertRes = withId;
+    }
+
+    if (insertRes.error) {
+      console.error('Error creating visit:', insertRes.error);
+      throw new Error(`Failed to create visit: ${insertRes.error.message || 'Unknown error'}`);
     }
     
-  return mapVisit(data);
+    return mapVisit(insertRes.data);
   },
 
   // Update visit
@@ -297,7 +456,7 @@ export const visitApi = {
           .replace(/-+/g, '-')
           .replace(/^-|-$/g, '');
         
-        const fileName = `visit-${Date.now()}-${index}-${sanitizedName}`;
+  const fileName = `visits/visit-${Date.now()}-${index}-${sanitizedName}`;
         
         console.log(`Uploading photo ${index + 1}:`, fileName, 'Size:', photo.size, 'Type:', photo.type);
         
@@ -305,11 +464,15 @@ export const visitApi = {
           .from('campaign-photos')
           .upload(fileName, photo, {
             cacheControl: '3600',
-            upsert: false
+            upsert: true
           });
         
         if (error) {
           console.error('Supabase storage error:', error);
+          const msg = (error as any)?.message || '';
+          if (/row-level security|RLS/i.test(msg)) {
+            throw new Error(`Failed to upload photo: ${photo.name} - RLS policy blocked upload. Ensure storage policy allows INSERT on bucket 'campaign-photos'.`);
+          }
           throw new Error(`Failed to upload photo: ${photo.name} - ${error.message}`);
         }
         
@@ -340,19 +503,45 @@ export const visitApi = {
     if (photoUrls[2]) updateData.photo_url_3 = photoUrls[2];
     if (photoUrls[3]) updateData.photo_url_4 = photoUrls[3];
     
-    const { data, error } = await supabase
+    // Attempt update with snake_case keys; retry camelCase on schema mismatch
+    let updateRes = await supabase
       .from('visits')
       .update(updateData)
       .eq('id', id)
       .select('*')
       .single();
-    
-    if (error) {
-      console.error('Error updating visit:', error);
-      throw new Error(`Failed to update visit: ${error.message || 'Unknown error'}`);
+
+    if (
+      updateRes.error && (
+        /42703/.test(updateRes.error.code || '') ||
+        /column .* does not exist/i.test(updateRes.error.message || '') ||
+        /could not find .*column/i.test((updateRes.error.message || '').toLowerCase()) ||
+        /schema cache/i.test((updateRes.error.message || '').toLowerCase())
+      )
+    ) {
+      const camelUpdate: any = {};
+      if (updateData.date) camelUpdate.date = updateData.date;
+      if (updateData.location) camelUpdate.location = updateData.location;
+      if (updateData.notes !== undefined) camelUpdate.notes = updateData.notes;
+      if (updateData.photo_url_1) camelUpdate.photoUrl1 = updateData.photo_url_1;
+      if (updateData.photo_url_2) camelUpdate.photoUrl2 = updateData.photo_url_2;
+      if (updateData.photo_url_3) camelUpdate.photoUrl3 = updateData.photo_url_3;
+      if (updateData.photo_url_4) camelUpdate.photoUrl4 = updateData.photo_url_4;
+
+      updateRes = await supabase
+        .from('visits')
+        .update(camelUpdate)
+        .eq('id', id)
+        .select('*')
+        .single();
+    }
+
+    if (updateRes.error) {
+      console.error('Error updating visit:', updateRes.error);
+      throw new Error(`Failed to update visit: ${updateRes.error.message || 'Unknown error'}`);
     }
     
-  return mapVisit(data);
+    return mapVisit(updateRes.data);
   },
 
   // Delete visit

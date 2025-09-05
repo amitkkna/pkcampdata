@@ -1,4 +1,18 @@
--- Run these commands in your Supabase SQL Editor
+-- IMPORTANT: If you saw "permission denied to set role 'supabase_admin'":
+-- - Do NOT use SET ROLE. This script does not require it.
+-- - In the Supabase Dashboard SQL Editor, run this with the Owner role (postgres) if available.
+-- - If you cannot run DDL (CREATE POLICY/INSERT INTO storage.buckets) due to permissions,
+--   use the Storage UI instead (steps below) or ask a project Owner to run this file.
+--
+-- Storage UI alternative (no SQL privileges needed):
+-- 1) Go to Storage → New bucket → id: campaign-photos → Public: ON → Create bucket.
+-- 2) Open the bucket → Policies → New Policy →
+--    - Create 4 policies on table storage.objects, each scoped to this bucket:
+--      a) SELECT:   USING: bucket_id = 'campaign-photos'
+--      b) INSERT:   WITH CHECK: bucket_id = 'campaign-photos'
+--      c) UPDATE:   USING: bucket_id = 'campaign-photos'  AND  WITH CHECK: bucket_id = 'campaign-photos'
+--      d) DELETE:   USING: bucket_id = 'campaign-photos'
+-- This makes uploads/reads work for public demos. Tighten later for real auth.
 
 -- Ensure UUID generation function is available
 create extension if not exists pgcrypto;

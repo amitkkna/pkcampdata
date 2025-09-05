@@ -17,6 +17,9 @@ yarn-error.log*
 *.env
 server/.env
 client/.env
+.env.local
+*.env.local
+client/.env.local
 
 # OS/editor
 .DS_Store

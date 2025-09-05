@@ -1,4 +1,4 @@
-import { createClient } from '@supabase/supabase-js';
+import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string | undefined;
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY as string | undefined;
@@ -10,10 +10,22 @@ if (!isSupabaseConfigured) {
   console.error('Supabase is not configured: set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY in build env.');
 }
 
-export const supabase = createClient(supabaseUrl || 'https://invalid.local', supabaseAnonKey || '');
+// Create a safe proxy that throws only if someone actually tries to use Supabase
+function createThrowingProxy(message: string): SupabaseClient {
+  return new Proxy({}, {
+    get() {
+      throw new Error(message);
+    }
+  }) as unknown as SupabaseClient;
+}
+
+export const supabase: SupabaseClient = isSupabaseConfigured
+  ? createClient(supabaseUrl!, supabaseAnonKey!)
+  : createThrowingProxy('Supabase is not configured. Set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY.');
 
 // Helper to get public URL for uploaded files
 export const getPublicUrl = (bucket: string, path: string) => {
+  if (!isSupabaseConfigured) return '';
   const { data } = supabase.storage.from(bucket).getPublicUrl(path);
   return data.publicUrl;
 };
