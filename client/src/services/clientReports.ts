@@ -61,22 +61,40 @@ const filterVisitsByDate = (
     endDate?: string;
   }
 ): Visit[] => {
+  // Normalise to a pure date key (YYYY-MM-DD) in local timezone to avoid
+  // off‑by‑one issues caused by implicit UTC interpretation of "YYYY-MM-DD".
+  const toDateKey = (value: string | Date | undefined): string | null => {
+    if (!value) return null;
+    const d = typeof value === 'string' ? new Date(value) : value;
+    if (isNaN(d.getTime())) return null;
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${y}-${m}-${day}`;
+  };
+
+  // Precompute boundary keys (lexicographically comparable)
+  const selectedKey = toDateKey(options.selectedDate);
+  const startKey = toDateKey(options.startDate);
+  const endKey = toDateKey(options.endDate);
+
   if (options.reportType === 'all') {
-    return visits;
+  return visits.slice().sort((a,b) => new Date(a.date).getTime() - new Date(b.date).getTime());
   }
   
-  if (options.reportType === 'single' && options.selectedDate) {
-    const targetDate = new Date(options.selectedDate).toDateString();
-    return visits.filter(v => new Date(v.date).toDateString() === targetDate);
+  if (options.reportType === 'single' && selectedKey) {
+    return visits
+      .filter(v => toDateKey(v.date) === selectedKey)
+      .sort((a,b) => new Date(a.date).getTime() - new Date(b.date).getTime());
   }
   
-  if (options.reportType === 'range' && options.startDate && options.endDate) {
-    const start = new Date(options.startDate);
-    const end = new Date(options.endDate);
-    return visits.filter(v => {
-      const visitDate = new Date(v.date);
-      return visitDate >= start && visitDate <= end;
-    });
+  if (options.reportType === 'range' && startKey && endKey) {
+    return visits
+      .filter(v => {
+        const k = toDateKey(v.date);
+        return !!k && k >= startKey && k <= endKey; // inclusive boundaries
+      })
+      .sort((a,b) => new Date(a.date).getTime() - new Date(b.date).getTime());
   }
   
   return visits;
