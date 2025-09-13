@@ -24,8 +24,36 @@ model Campaign {
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
   visits         Visit[]
+  folders        Folder[]
 
   @@map("campaigns")
+}
+
+model Folder {
+  id             String   @id @default(cuid())
+  name           String   // e.g., "Bemetara"
+  location       String   // Location name for photo naming
+  campaignId     String
+  campaign       Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  photos         FolderPhoto[]
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@map("folders")
+}
+
+model FolderPhoto {
+  id               String   @id @default(cuid())
+  filename         String   // Auto-generated: Location-Campaign-Date format
+  originalName     String   // Original uploaded filename
+  photoUrl         String   // Supabase Storage URL
+  uploadDate       DateTime @default(now())
+  folderId         String
+  folder           Folder   @relation(fields: [folderId], references: [id], onDelete: Cascade)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  @@map("folder_photos")
 }
 
 model Visit {

@@ -52,9 +52,37 @@ export interface CreateVisitRequest {
   campaignId: string;
 }
 
+export interface Folder {
+  id: string;
+  name: string;
+  location: string;
+  campaignId: string;
+  photos: FolderPhoto[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface FolderPhoto {
+  id: string;
+  filename: string;
+  originalName: string;
+  photoUrl: string;
+  uploadDate: string;
+  folderId: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface GenerateReportRequest {
   campaignId: string;
   date: string;
+}
+
+export interface GenerateFolderReportRequest {
+  folderId: string;
+  reportType: 'pdf' | 'ppt';
+  selectedPhotoIds?: string[]; // Optional: specific photos to include
+  photosPerPage?: number; // Optional: 1, 2, 3, 4, 6, 8 (default 8, maximum 8)
 }
 
 export interface ApiResponse<T> {

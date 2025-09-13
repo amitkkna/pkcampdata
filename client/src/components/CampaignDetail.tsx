@@ -1,10 +1,12 @@
 import { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { campaignApi, visitApi } from '../services/api';
+import { campaignApi, visitApi, folderApi } from '../services/api';
 import type { Campaign, Visit } from '../../../shared/types';
 import VisitForm from './VisitForm';
 import VisitList from './VisitList';
 import ReportGenerator from './ReportGenerator';
+import FolderManagement from './FolderManagement';
+import { generateFolderReport } from '../services/folderReports';
 
 export default function CampaignDetail() {
   const { id } = useParams<{ id: string }>();
@@ -49,6 +51,31 @@ export default function CampaignDetail() {
 
   const handleVisitDeleted = (visitId: string) => {
     setVisits(prev => prev.filter(v => v.id !== visitId));
+  };
+
+  const handleFolderReport = async (
+    folderId: string, 
+    reportType: 'pdf' | 'ppt',
+    selectedPhotoIds: string[],
+    photosPerPage: number
+  ) => {
+    if (!campaign) return;
+    
+    try {
+      // Get folder data with photos
+      const folder = await folderApi.getById(folderId);
+      if (!folder) {
+        throw new Error('Folder not found');
+      }
+
+      await generateFolderReport(reportType, folder, campaign, {
+        selectedPhotoIds,
+        photosPerPage
+      });
+    } catch (error) {
+      console.error('Error generating folder report:', error);
+      alert(`Failed to generate ${reportType.toUpperCase()} report: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
   };
 
   if (loading) {
@@ -181,6 +208,12 @@ export default function CampaignDetail() {
           <ReportGenerator campaign={campaign} visits={visits} />
         </div>
       </div>
+
+      {/* Location-Based Photo Management Section */}
+      <FolderManagement
+        campaign={campaign}
+        onGenerateReport={handleFolderReport}
+      />
 
       {/* Visits Management Section */}
       <div className="bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden">

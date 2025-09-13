@@ -1,67 +1,169 @@
-# Campaign Reporting Generator
+# PK PPT Reports - Campaign Photo Management System
 
-An internal web application for advertisement and van management agencies to streamline client-facing report creation.
+A full-stack TypeScript application for managing campaign photos and generating professional PDF and PowerPoint reports.
 
-## Features
+## 🚀 Features
 
-- **Campaign Management**: Create and manage multiple advertising campaigns
-- **Visit Tracking**: Log campaign activities with dates, locations, photos, and notes
-- **Automated PDF Reports**: Generate professional daily reports with one click
-- **PowerPoint Presentations**: Create complete campaign presentations automatically
-- **Photo Management**: Upload and organize proof-of-performance photographs
-- **Simple Interface**: Designed for non-technical Campaign Managers
+### 📸 Photo Management
+- **Campaign Management**: Create and manage marketing campaigns
+- **Visit Tracking**: Track campaign visits with location and photo documentation
+- **Folder-based Organization**: Organize photos into folders for better management
+- **Photo Upload**: Support for multiple photo formats with automatic optimization
+- **Photo Deletion**: Easy photo removal with confirmation
 
-## Tech Stack
+### 📊 Report Generation
+- **Flexible PDF Reports**: Generate landscape PDF reports with 1-8 photos per page
+- **PowerPoint Presentations**: Create professional PPT presentations with matching layouts
+- **Customizable Layouts**: Support for various photo arrangements (1x1, 2x1, 2x2, 3x2, 4x2, etc.)
+- **File Size Optimization**: Automatic image compression for smaller file sizes
+- **Clean Filename Display**: URL decoding and extension removal for professional appearance
 
-- Frontend: React + TypeScript + Tailwind CSS (Vite)
-- Data: Supabase (Postgres + Storage) directly from the browser, with mock-data fallback for local/dev
-- Reporting: jsPDF (PDF) + PptxGenJS (PowerPoint)
+### 🎨 User Interface
+- **Modern React UI**: Built with React 19, TypeScript, and Tailwind CSS
+- **Responsive Design**: Works on desktop and mobile devices
+- **Photo Selection Dialog**: Interactive photo selection with thumbnail previews
+- **Real-time Preview**: Live preview of report page count and layout
 
-## Quick Start
+## 🏗️ Technical Architecture
 
-1. **Install Dependencies**
+### Frontend
+- **React 19** with TypeScript
+- **Vite 7** for build tooling
+- **Tailwind CSS** for styling
+- **Lucide React** for icons
+- **jsPDF** for PDF generation
+- **PptxGenJS** for PowerPoint generation
+
+### Backend
+- **Node.js** with Express and TypeScript
+- **Prisma ORM** with SQLite database
+- **Multer** for file upload handling
+- **Sharp** for image optimization
+- **Supabase** for cloud storage (optional)
+
+## 📦 Installation
+
+### Prerequisites
+- Node.js 18+ 
+- npm or yarn
+
+### Setup
+
+1. **Clone the repository**
    ```bash
-   npm run install:all
+   git clone https://github.com/amitkkna/pkcampdata.git
+   cd pkcampdata
    ```
 
-2. **Start Development Server**
+2. **Install dependencies**
    ```bash
-   npm run dev
+   npm install
+   cd client && npm install && cd ..
+   cd server && npm install && cd ..
    ```
 
-3. **Access Application**
-   - Open http://localhost:5173 in your browser
+3. **Initialize database**
+   ```bash
+   cd server
+   npx prisma migrate dev
+   npx prisma generate
+   cd ..
+   ```
 
-## Project Structure
+4. **Build the project**
+   ```bash
+   npm run build
+   ```
+
+## 🚀 Usage
+
+### Development Mode
+```bash
+# Start both client and server
+npm run dev
+
+# Client: http://localhost:5173
+# Server: http://localhost:3001
+```
+
+### Production Build
+```bash
+npm run build
+npm run start
+```
+
+## 📁 Project Structure
 
 ```
 pkpptreports/
-├── client/          # React frontend
-├── shared/          # Shared TypeScript types
-└── netlify.toml     # Netlify config (frontend-only)
+├── client/                 # React frontend
+│   ├── src/
+│   │   ├── components/     # React components
+│   │   ├── services/       # API and report generation
+│   │   └── assets/         # Static assets
+│   └── dist/              # Built client files
+├── server/                # Express backend
+│   ├── src/
+│   │   ├── routes/        # API routes
+│   │   └── services/      # Business logic
+│   ├── prisma/           # Database schema and migrations
+│   └── uploads/          # File uploads (local storage)
+├── shared/               # Shared TypeScript types
+└── docs/                # Documentation
 ```
 
-## Usage
+## 🎯 Photo Layout Options
 
-1. **Create Campaign**: Click "Create New Campaign" and fill in client details
-2. **Add Visits**: Enter visit data including date, location, photo, and notes
-3. **Generate Reports**: 
-   - Daily PDF reports for specific dates
-   - Complete PowerPoint presentations for entire campaigns
+| Photos | Layout Description |
+|--------|-------------------|
+| 1 | Full page/slide |
+| 2 | Side-by-side columns |
+| 3 | One large + two stacked |
+| 4 | 2×2 grid |
+| 5 | 3 top + 2 bottom |
+| 6 | 3×2 grid |
+| 7 | 4 top + 3 bottom |
+| 8 | 4×2 grid (maximum) |
 
-## Development
+## 📝 API Endpoints
 
-- Frontend: Vite dev server with hot reload
-- Data: Supabase via browser SDK (no backend needed)
+### Campaigns
+- `GET /api/campaigns` - List all campaigns
+- `POST /api/campaigns` - Create new campaign
+- `GET /api/campaigns/:id` - Get campaign details
 
-## Deployment
+### Visits
+- `GET /api/visits` - List visits for campaign
+- `POST /api/visits` - Create visit with photos
 
-### Netlify (Frontend-only)
-1) Create a new site from this repo in Netlify.
-2) Build settings: base = `client`, command = `npm run build`, publish = `dist`.
-3) Environment variables: set `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY`.
-4) SPA redirect is configured in `netlify.toml`.
+### Folders
+- `GET /api/folders` - List folders for campaign
+- `POST /api/folders` - Create new folder
+- `POST /api/folders/:id/photos` - Upload photos to folder
+- `DELETE /api/folders/:id/photos/:photoId` - Delete photo
 
-## Authentication
+### Reports
+- `POST /api/reports/generate` - Generate visit-based reports
+- `POST /api/reports/folder` - Generate folder-based reports
 
-Auth is optional and currently disabled. The app reads/writes using Supabase anonymous policies you configure. If you later add auth, wire it in the client only.
+## 🛠️ Development
+
+### Database Management
+```bash
+# Create new migration
+npx prisma migrate dev --name migration_name
+
+# Generate Prisma client
+npx prisma generate
+
+# View database
+npx prisma studio
+```
+
+## 📄 License
+
+This project is licensed under the MIT License.
+
+---
+
+**Built with ❤️ by Global Digital Connect**

@@ -1,5 +1,5 @@
 import { supabase } from './supabaseClient';
-import type { Campaign, Visit, CreateCampaignRequest, CreateVisitRequest } from '../../../shared/types';
+import type { Campaign, Visit, CreateCampaignRequest, CreateVisitRequest, Folder, FolderPhoto } from '../../../shared/types';
 
 // Check if Supabase is properly configured
 const isConfigured = () => {
@@ -554,6 +554,289 @@ export const visitApi = {
     if (error) {
       console.error('Error deleting visit:', error);
       throw new Error(`Failed to delete visit: ${error.message || 'Unknown error'}`);
+    }
+  },
+};
+
+// Helper functions for folder data mapping
+const mapFolder = (f: any): Folder => ({
+  id: f.id,
+  name: f.name,
+  location: f.location,
+  campaignId: f.campaign_id ?? f.campaignId,
+  photos: (f.folder_photos || f.photos || []).map((p: any) => mapFolderPhoto(p)),
+  createdAt: f.created_at ?? f.createdAt,
+  updatedAt: f.updated_at ?? f.updatedAt,
+});
+
+const mapFolderPhoto = (p: any): FolderPhoto => ({
+  id: p.id,
+  filename: p.filename,
+  originalName: p.original_name ?? p.originalName,
+  photoUrl: p.photo_url ?? p.photoUrl,
+  uploadDate: p.upload_date ?? p.uploadDate,
+  folderId: p.folder_id ?? p.folderId,
+  createdAt: p.created_at ?? p.createdAt,
+  updatedAt: p.updated_at ?? p.updatedAt,
+});
+
+// Folder API functions
+export const folderApi = {
+  // Get all folders for a campaign
+  getByCampaign: async (campaignId: string): Promise<Folder[]> => {
+    if (!isConfigured()) {
+      console.log('Supabase not configured, returning mock folder data');
+      return [];
+    }
+
+    try {
+      const { data, error } = await supabase
+        .from('folders')
+        .select(`
+          *,
+          folder_photos (*)
+        `)
+        .eq('campaign_id', campaignId)
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        console.error('Error fetching folders:', error);
+        throw new Error(`Failed to fetch folders: ${error.message}`);
+      }
+
+      return (data || []).map(mapFolder);
+    } catch (err) {
+      console.error('Folder fetch error:', err);
+      throw err;
+    }
+  },
+
+  // Create a new folder
+  create: async (folderData: { name: string; location: string; campaignId: string }): Promise<Folder> => {
+    if (!isConfigured()) {
+      throw new Error('Supabase is not configured');
+    }
+
+    const payload = {
+      id: genUUID(),
+      name: folderData.name,
+      location: folderData.location,
+      campaign_id: folderData.campaignId,
+    };
+
+    try {
+      const { data, error } = await supabase
+        .from('folders')
+        .insert([payload])
+        .select('*')
+        .single();
+
+      if (error) {
+        console.error('Error creating folder:', error);
+        throw new Error(`Failed to create folder: ${error.message}`);
+      }
+
+      return mapFolder(data);
+    } catch (err) {
+      console.error('Folder creation error:', err);
+      throw err;
+    }
+  },
+
+  // Upload photos to a folder
+  uploadPhotos: async (
+    folderId: string,
+    files: File[]
+  ): Promise<FolderPhoto[]> => {
+    if (!isConfigured()) {
+      throw new Error('Supabase is not configured');
+    }
+
+    const uploadedPhotos: FolderPhoto[] = [];
+
+    for (let i = 0; i < files.length; i++) {
+      const file = files[i];
+      
+      try {
+        // Use original filename as-is (preserve original name)
+        const filename = file.name;
+        
+        // Upload to structured path: campaign-photos/folders/{folderId}/{filename}
+        const filePath = `folders/${folderId}/${filename}`;
+        
+        const { error: uploadError } = await supabase.storage
+          .from('campaign-photos')
+          .upload(filePath, file, {
+            upsert: true
+          });
+
+        if (uploadError) {
+          console.error(`Upload error for ${file.name}:`, uploadError);
+          continue; // Skip this file and continue with others
+        }
+
+        // Get public URL
+        const { data: { publicUrl } } = supabase.storage
+          .from('campaign-photos')
+          .getPublicUrl(filePath);
+
+        // Save photo record to database
+        const photoPayload = {
+          id: genUUID(),
+          filename: filename, // Use original filename
+          original_name: file.name,
+          photo_url: publicUrl,
+          upload_date: new Date().toISOString(),
+          folder_id: folderId,
+        };
+
+        const { data: photoData, error: photoError } = await supabase
+          .from('folder_photos')
+          .insert([photoPayload])
+          .select('*')
+          .single();
+
+        if (photoError) {
+          console.error('Error saving photo record:', photoError);
+          continue;
+        }
+
+        uploadedPhotos.push(mapFolderPhoto(photoData));
+      } catch (error) {
+        console.error(`Error processing ${file.name}:`, error);
+        continue;
+      }
+    }
+
+    return uploadedPhotos;
+  },
+
+  // Get folder with photos
+  getById: async (folderId: string): Promise<Folder | null> => {
+    if (!isConfigured()) {
+      throw new Error('Supabase is not configured');
+    }
+
+    try {
+      const { data, error } = await supabase
+        .from('folders')
+        .select(`
+          *,
+          folder_photos (*)
+        `)
+        .eq('id', folderId)
+        .single();
+
+      if (error) {
+        if (error.code === 'PGRST116') {
+          return null; // Not found
+        }
+        throw new Error(`Failed to fetch folder: ${error.message}`);
+      }
+
+      return mapFolder(data);
+    } catch (err) {
+      console.error('Folder fetch error:', err);
+      throw err;
+    }
+  },
+
+  // Delete folder and all its photos
+  delete: async (folderId: string): Promise<void> => {
+    if (!isConfigured()) {
+      throw new Error('Supabase is not configured');
+    }
+
+    try {
+      // First, delete all photos from storage
+      const { data: photos } = await supabase
+        .from('folder_photos')
+        .select('photo_url')
+        .eq('folder_id', folderId);
+
+      if (photos && photos.length > 0) {
+        const filePaths = photos.map(p => {
+          // Extract file path from URL
+          const url = p.photo_url;
+          const match = url.match(/folders\/[^/]+\/[^?]+/);
+          return match ? match[0] : null;
+        }).filter(Boolean);
+
+        if (filePaths.length > 0) {
+          const { error: storageError } = await supabase.storage
+            .from('campaign-photos')
+            .remove(filePaths);
+
+          if (storageError) {
+            console.warn('Some photos may not have been deleted from storage:', storageError);
+          }
+        }
+      }
+
+      // Delete folder (cascade will delete folder_photos records)
+      const { error } = await supabase
+        .from('folders')
+        .delete()
+        .eq('id', folderId);
+
+      if (error) {
+        throw new Error(`Failed to delete folder: ${error.message}`);
+      }
+    } catch (err) {
+      console.error('Folder deletion error:', err);
+      throw err;
+    }
+  },
+
+  // Delete a single photo from a folder
+  deletePhoto: async (photoId: string): Promise<void> => {
+    if (!isConfigured()) {
+      throw new Error('Supabase is not configured');
+    }
+
+    try {
+      // First, get the photo data to extract the file path for storage deletion
+      const { data: photo, error: fetchError } = await supabase
+        .from('folder_photos')
+        .select('photo_url')
+        .eq('id', photoId)
+        .single();
+
+      if (fetchError) {
+        throw new Error(`Failed to fetch photo: ${fetchError.message}`);
+      }
+
+      // Extract file path from URL for storage deletion
+      const filePath = (() => {
+        const url = photo.photo_url;
+        const match = url.match(/folders\/[^/]+\/[^?]+/);
+        return match ? match[0] : null;
+      })();
+
+      // Delete from database first
+      const { error: dbError } = await supabase
+        .from('folder_photos')
+        .delete()
+        .eq('id', photoId);
+
+      if (dbError) {
+        throw new Error(`Failed to delete photo from database: ${dbError.message}`);
+      }
+
+      // Delete from storage (if file path was found)
+      if (filePath) {
+        const { error: storageError } = await supabase.storage
+          .from('campaign-photos')
+          .remove([filePath]);
+
+        if (storageError) {
+          console.warn('Photo deleted from database but storage deletion failed:', storageError);
+          // Don't throw error here as the main operation (DB deletion) succeeded
+        }
+      }
+    } catch (err) {
+      console.error('Photo deletion error:', err);
+      throw err;
     }
   },
 };

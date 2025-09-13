@@ -5,6 +5,7 @@ import path from 'path';
 import { campaignRoutes } from './routes/campaigns';
 import { visitRoutes } from './routes/visits';
 import { reportRoutes } from './routes/reports';
+import folderRoutes from './routes/folders';
 // Auth middleware removed to run the API without authentication
 
 // Load environment variables
@@ -23,6 +24,7 @@ app.use(express.urlencoded({ extended: true }));
 app.use('/api/campaigns', campaignRoutes);
 app.use('/api/visits', visitRoutes);
 app.use('/api/reports', reportRoutes);
+app.use('/api/folders', folderRoutes);
 
 // Health check
 app.get('/health', (req, res) => {
